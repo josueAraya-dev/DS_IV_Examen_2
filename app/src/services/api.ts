@@ -50,7 +50,7 @@ export async function api<T = unknown>(ruta: string, opciones: OpcionesApi = {})
   const { method = 'GET', body, params } = opciones;
   const conCuerpo = body !== undefined;
 
-  // Tiempo máximo: si la API no responde en 10 s, se aborta el fetch.
+ 
   const controlador = new AbortController();
   const temporizador = setTimeout(() => controlador.abort(), TIEMPO_MAXIMO_MS);
 

@@ -17,50 +17,88 @@ let tokenCargado = false;
 export const obtenerToken = () => token.value;
 
 /**
- * TODO [M2] Sesión segura (10 pts en total para este archivo).
+ * [M2] Sesión segura.
  *
  * El token y el usuario se guardan con SecureStorage (@aparajita/capacitor-secure-storage):
- * Keystore en Android, Keychain en iOS.  NO use localStorage ni @capacitor/preferences.
- *   await SecureStorage.set(clave, valor)   ·   await SecureStorage.get(clave)   ·   await SecureStorage.remove(clave)
+ * Keystore en Android, Keychain en iOS.  NO se usa localStorage ni @capacitor/preferences.
  */
 
-/** TODO [M2] Borrar token y usuario de la memoria (refs) y del almacenamiento cifrado. */
+const MAX_DEVICE_NAME = 60;
+
+interface RespuestaLogin { token: string; usuario: Usuario }
+
+/** [M2] Borra token y usuario de la memoria (refs) y del almacenamiento cifrado. */
 export async function olvidarSesion() {
-  // TODO [M2]
+  token.value = null;
+  usuario.value = null;
+  await Promise.all([SecureStorage.remove(CLAVE_TOKEN), SecureStorage.remove(CLAVE_USUARIO)]);
+}
+
+/** Identifica el dispositivo en el token de Sanctum, ej. "android sdk_gphone64_x86_64". */
+async function nombreDispositivo(): Promise<string> {
+  const { platform, model } = await Device.getInfo();
+  return `${platform} ${model}`.slice(0, MAX_DEVICE_NAME);
 }
 
 export function useAuth() {
   const estaAutenticado = computed(() => token.value !== null);
 
   /**
-   * TODO [M2] login(email, password)
-   *  1. device_name = `${plataforma} ${modelo}` usando Device.getInfo() (máx. 60 caracteres).
-   *  2. POST /login con { email, password, device_name } usando api().
-   *     Respuesta 200: { token: "1|abc...", usuario: { id, nombre } }   ·   Error: 422 con errors.email
-   *  3. Guardar token y usuario en los refs y en SecureStorage.
-   *  No atrape el error: LoginPage.vue ya muestra los 422.
+   * [M2] login(email, password)
+   *  El error NO se atrapa aquí: api() lanza ErrorApi y LoginPage.vue muestra los 422 / 429.
    */
   async function login(email: string, password: string) {
-    void [email, password, api, Device, SecureStorage, CLAVE_TOKEN, CLAVE_USUARIO];
-    throw new Error('TODO [M2] login sin implementar');
+    const device_name = await nombreDispositivo();
+    const respuesta = await api<RespuestaLogin>('/login', {
+      method: 'POST',
+      body: { email, password, device_name },
+    });
+
+    token.value = respuesta.token;
+    usuario.value = respuesta.usuario;
+    await Promise.all([
+      SecureStorage.set(CLAVE_TOKEN, respuesta.token),
+      SecureStorage.set(CLAVE_USUARIO, { ...respuesta.usuario }),
+    ]);
   }
 
   /**
-   * TODO [M2] cargarToken()
-   *  Al abrir la app, recupera token y usuario de SecureStorage y los pone en los refs.
-   *  Debe ejecutarse una sola vez (use la bandera tokenCargado).
+   * [M2] cargarToken()
+   *  Al abrir la app recupera token y usuario de SecureStorage y los pone en los refs.
+   *  La bandera tokenCargado hace que solo lea el almacenamiento la primera vez
+   *  (la guarda del router lo llama antes de CADA navegación).
    */
   async function cargarToken() {
-    void tokenCargado;
+    if (tokenCargado) return;
+
+    try {
+      const [tokenGuardado, usuarioGuardado] = await Promise.all([
+        SecureStorage.get(CLAVE_TOKEN),
+        SecureStorage.get(CLAVE_USUARIO),
+      ]);
+      token.value = typeof tokenGuardado === 'string' ? tokenGuardado : null;
+      usuario.value = (usuarioGuardado as Usuario | null) ?? null;
+    } catch {
+      // Datos cifrados corruptos o ilegibles: se empieza sin sesión.
+      await olvidarSesion();
+    } finally {
+      tokenCargado = true;
+    }
   }
 
   /**
-   * TODO [M2] cerrarSesion()
-   *  POST /logout para revocar el token en el servidor y SIEMPRE borrar la sesión local,
-   *  aunque la API falle (sin red o token vencido).
+   * [M2] cerrarSesion()
+   *  POST /logout revoca el token en el servidor. El finally garantiza que la sesión
+   *  local se borre SIEMPRE, aunque la API falle (sin red o token vencido).
    */
   async function cerrarSesion() {
-    // TODO [M2]
+    try {
+      await api('/logout', { method: 'POST' });
+    } catch {
+      // Si no se pudo revocar en el servidor, igual se cierra la sesión en el teléfono.
+    } finally {
+      await olvidarSesion();
+    }
   }
 
   return { usuario, estaAutenticado, login, cargarToken, cerrarSesion };

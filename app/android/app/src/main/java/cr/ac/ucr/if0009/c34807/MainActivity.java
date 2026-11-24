@@ -1,4 +1,4 @@
-package cr.ac.ucr.if0009.examen;
+package cr.ac.ucr.if0009.c34807;
 
 import com.getcapacitor.BridgeActivity;
 

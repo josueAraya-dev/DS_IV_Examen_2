@@ -1,15 +1,15 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 /**
- * TODO [M8] Identidad de SU app (4 pts):
- *   appId   → cr.ac.ucr.if0009.<su carné en minúscula>      ej. cr.ac.ucr.if0009.c12345
- *   appName → "Préstamos <su primer apellido>"
- * Ojo: la plataforma android/ ya existe. Revise qué archivos de android/ también hay que cambiar
- * y luego ejecute  ionic build  →  npx cap sync  →  npx cap run android.
+ * [M8] Identidad de la app: carné C34807 · primer apellido Mendez.
+ * Como android/ ya existía, el mismo appId/appName se cambió a mano en:
+ *   android/app/build.gradle  (namespace y applicationId)
+ *   android/app/src/main/res/values/strings.xml  (app_name, title_activity_main, package_name, custom_url_scheme)
+ *   android/app/src/main/java/cr/ac/ucr/if0009/c34807/MainActivity.java  (carpeta y package movidos)
  */
 const config: CapacitorConfig = {
-  appId: 'cr.ac.ucr.if0009.examen',
-  appName: 'Préstamos Móvil',
+  appId: 'cr.ac.ucr.if0009.c34807',
+  appName: 'Préstamos Mendez',
   webDir: 'dist',
   android: {
     // Solo para el examen: la API local corre en http://10.0.2.2.

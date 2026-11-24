@@ -95,7 +95,6 @@ export function useAuth() {
     try {
       await api('/logout', { method: 'POST' });
     } catch {
-      // Si no se pudo revocar en el servidor, igual se cierra la sesión en el teléfono.
     } finally {
       await olvidarSesion();
     }
